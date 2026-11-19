@@ -4,8 +4,11 @@ import path from 'node:path';
 const fixture = path.resolve('tests/fixtures/palm.png');
 
 async function recognize(page, file = fixture) {
-  await page.getByLabel('上传手掌照片', { exact: true }).setInputFiles(file);
-  await expect(page.getByRole('status')).toContainText('三条掌纹识别完成');
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: '上传手掌照片', exact: true }).click();
+  await (await chooser).setFiles(file);
+  await expect(page.getByTestId('score')).toHaveText(/^\d+$/);
+  await expect(page.getByRole('status')).toHaveCount(0);
   await expect(page.getByRole('alert')).toHaveCount(0);
 }
 
@@ -38,6 +41,8 @@ test('real local inference, mechanical occlusion, payment, injection, photo rese
   page.on('pageerror', error => errors.push(error.message));
   page.on('request', request => { if (/^https?:/.test(request.url()) && !request.url().startsWith('http://127.0.0.1:4173/')) external.push(request.url()); });
   await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('手相改造');
+  await expect(page.getByRole('status')).toHaveCount(0);
   await expect(page.getByTestId('score')).toHaveText('—');
   await expect(page.getByRole('button', { name: '购买注射 · ¥80' })).toBeDisabled();
   await recognize(page);
@@ -68,7 +73,7 @@ test('real local inference, mechanical occlusion, payment, injection, photo rese
   await expect(page.getByTestId('money')).toHaveText(`¥${reward - 80}`);
   const after = parseFloat(await page.locator('tbody tr').first().locator('td').first().innerText());
   expect(after - before).toBeCloseTo(24, 0);
-  await expect(page.getByRole('status')).toContainText('感情线已注射');
+  await expect(page.getByRole('alert')).toHaveCount(0);
   await page.getByLabel('选择掌纹', { exact: true }).selectOption('1');
   await recognize(page);
   await expect(page.getByTestId('money')).toHaveText('¥0');
@@ -113,7 +118,8 @@ test('camera capture uses the real model and resets previous modifications', asy
   await expect.poll(() => video.evaluate(el => el.readyState)).toBeGreaterThanOrEqual(2);
   await page.getByRole('button', { name: '拍照并识别' }).click();
   await expect(video).toHaveCount(0);
-  await expect(page.getByRole('status')).toContainText('三条掌纹识别完成');
+  await expect(page.getByTestId('score')).toHaveText(/^\d+$/);
+  await expect(page.getByRole('status')).toHaveCount(0);
   await expect(page.getByTestId('money')).toHaveText('¥0');
   await expect(page.locator('.offers button')).toHaveCount(3);
   expect(Number(await page.getByTestId('score').innerText())).toBeGreaterThan(1000);

@@ -14,7 +14,7 @@ export function loadPartImages() {
   imagesPromise ||= Promise.all(PART_TYPES.map(part => new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve([part.type, image]);
-    image.onerror = () => reject(new Error('机械图片加载失败，请检查 public/parts 文件。'));
+    image.onerror = () => reject(new Error('机械图片加载失败。'));
     image.src = assetUrl(`parts/${part.type}.svg`);
   }))).then(entries => Object.fromEntries(entries)).catch(error => { imagesPromise = null; throw error; });
   return imagesPromise;

@@ -80,8 +80,8 @@ export function extendLine(line, amount = INJECTION_LENGTH, size = SIZE) {
 }
 
 export function purchaseInjection(lines, index, money) {
-  if (money < INJECTION_COST || !lines[index]) return { ok: false, message: '余额不足。请先安装机械部件获得金钱。' };
+  if (money < INJECTION_COST || !lines[index]) return { ok: false, message: '余额不足。' };
   const { line, added } = extendLine(lines[index]);
-  if (added < 1) return { ok: false, message: '这条掌纹已到达画布边缘，无法延长；未扣款。' };
+  if (added < 1) return { ok: false, message: '无法延长，未扣款。' };
   return { ok: true, lines: lines.map((old, i) => i === index ? line : old), money: money - INJECTION_COST, added };
 }
