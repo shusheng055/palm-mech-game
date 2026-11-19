@@ -48,7 +48,7 @@ test('injection respects the frame and does not charge a line with no room', () 
   const edge = { points: [[1, 200], [510, 200]] };
   const result = purchaseInjection([edge], 0, 100);
   assert.equal(result.ok, false);
-  assert.match(result.message, /未扣款/);
+  assert.match(result.message, /No charge/);
   const near = extendLine({ points: [[500, 10], [509, 10]] });
   assert.equal(near.added, 24); // The opposite end has room.
   assert.ok(near.line.points.every(([x, y]) => x >= 1 && x <= 510 && y >= 1 && y <= 510));
@@ -75,7 +75,7 @@ for (let missing = 1; missing <= 3; missing++) {
   test(`missing class ${missing} rejects the whole result with the exact line name`, () => {
     const { mask, probabilities } = fixtureMask();
     for (let i = 0; i < mask.length; i++) if (mask[i] === missing) mask[i] = 0;
-    assert.throws(() => traceMask(mask, probabilities), new RegExp(['感情线', '智慧线', '生命线'][missing - 1]));
+    assert.throws(() => traceMask(mask, probabilities), new RegExp(['Heart Line', 'Head Line', 'Life Line'][missing - 1]));
   });
 }
 
@@ -83,14 +83,14 @@ test('short disconnected fragments are not joined into an invented line', () => 
   const { mask, probabilities } = fixtureMask();
   for (let i = 0; i < mask.length; i++) if (mask[i] === 1) mask[i] = 0;
   for (const start of [50, 200, 350]) for (let x = start; x < start + 25; x++) mask[100 * 512 + x] = 1;
-  assert.throws(() => traceMask(mask, probabilities), /感情线/);
+  assert.throws(() => traceMask(mask, probabilities), /Heart Line/);
 });
 
 test('low confidence, empty and non-finite outputs do not produce results', () => {
   const { mask, probabilities } = fixtureMask();
-  assert.throws(() => traceMask(mask, probabilities.fill(.4)), /未可靠识别/);
-  assert.throws(() => traceMask(new Uint8Array(mask.length), probabilities), /感情线、智慧线、生命线/);
-  assert.throws(() => decodeLogits(new Float32Array(16).fill(NaN), 2), /模型输出无效/);
-  assert.throws(() => decodeLogits(new Float32Array(2), 2), /尺寸/);
+  assert.throws(() => traceMask(mask, probabilities.fill(.4)), /Unable to detect/);
+  assert.throws(() => traceMask(new Uint8Array(mask.length), probabilities), /Heart Line, Head Line, Life Line/);
+  assert.throws(() => decodeLogits(new Float32Array(16).fill(NaN), 2), /Invalid model output/);
+  assert.throws(() => decodeLogits(new Float32Array(2), 2), /dimensions/);
   assert.deepEqual([...skeletonize(new Uint8Array(25), 5)], Array(25).fill(0));
 });

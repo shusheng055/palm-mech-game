@@ -10,14 +10,14 @@ async function getSession(baseUrl) {
       ort.env.wasm.proxy = false;
       ort.env.wasm.wasmPaths = new URL('runtime/ort/', baseUrl).href;
       const response = await fetch(new URL('models/student_fp16.onnx', baseUrl));
-      if (!response.ok) throw new Error(`ONNX 模型无法获取（HTTP ${response.status}）。`);
+      if (!response.ok) throw new Error(`ONNX model unavailable (HTTP ${response.status}).`);
       const buffer = await response.arrayBuffer();
-      if (buffer.byteLength !== 11284720) throw new Error('ONNX 模型文件不完整。');
+      if (buffer.byteLength !== 11284720) throw new Error('ONNX model file is incomplete.');
       try {
         return await ort.InferenceSession.create(buffer, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
       } catch (error) {
         console.error(error);
-        throw new Error('本地 ONNX 模型加载失败。');
+        throw new Error('ONNX model failed to load.');
       }
     })().catch((error) => { sessionPromise = null; throw error; });
   }
@@ -41,7 +41,7 @@ self.onmessage = async ({ data: { id, rgba, baseUrl } }) => {
     input = new ort.Tensor('float32', tensor, [1, 3, 512, 512]);
     outputs = await session.run({ [session.inputNames[0]]: input });
     const output = outputs[session.outputNames[0]];
-    if (output.dims.join(',') !== '1,4,512,512') throw new Error('模型输出尺寸不匹配。');
+    if (output.dims.join(',') !== '1,4,512,512') throw new Error('Unexpected model output dimensions.');
     const { mask, probabilities } = decodeLogits(output.data);
     const lines = traceMask(mask, probabilities);
     self.postMessage({ id, lines, milliseconds: Math.round(performance.now() - started) });

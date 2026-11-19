@@ -1,5 +1,5 @@
 * { box-sizing: border-box; }
-:root { color: #000; background: #fff; font-family: Arial, "Microsoft YaHei", sans-serif; font-size: 16px; }
+:root { color: #000; background: #fff; font-family: Arial, sans-serif; font-size: 16px; }
 body { margin: 0; }
 main { max-width: 1160px; margin: 0 auto; padding: 24px; }
 h1 { margin: 0 0 16px; font-size: 26px; font-weight: 600; }
@@ -31,9 +31,9 @@ small { font-size: 14px; line-height: 1.5; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 th, td { text-align: left; border: 1px solid #000; padding: 8px 6px; }
 .offers { display: flex; gap: 8px; }
-.offers button { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 5px; }
+.offers button { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 5px; overflow-wrap: anywhere; }
 .offers button.selected { outline: 2px solid #000; outline-offset: -3px; }
-.offers img { width: 72px; height: 72px; object-fit: contain; }
+.offers img { width: 56px; height: 56px; object-fit: contain; }
 .offers small { font-size: 14px; }
 .placement { border-top: 1px solid #000; margin-top: 14px; padding-top: 12px; }
 .camera-panel { width: min(100%, 512px); border: 1px solid #000; padding: 10px; margin-top: 14px; }

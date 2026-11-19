@@ -1,7 +1,7 @@
 export const SIZE = 512;
 export const INJECTION_COST = 80;
 export const INJECTION_LENGTH = 24;
-export const LINE_NAMES = ['感情线', '智慧线', '生命线'];
+export const LINE_NAMES = ['Heart Line', 'Head Line', 'Life Line'];
 
 export function pathLength(points) {
   let length = 0;
@@ -80,8 +80,8 @@ export function extendLine(line, amount = INJECTION_LENGTH, size = SIZE) {
 }
 
 export function purchaseInjection(lines, index, money) {
-  if (money < INJECTION_COST || !lines[index]) return { ok: false, message: '余额不足。' };
+  if (money < INJECTION_COST || !lines[index]) return { ok: false, message: 'Insufficient funds.' };
   const { line, added } = extendLine(lines[index]);
-  if (added < 1) return { ok: false, message: '无法延长，未扣款。' };
+  if (added < 1) return { ok: false, message: 'Cannot extend this line. No charge.' };
   return { ok: true, lines: lines.map((old, i) => i === index ? line : old), money: money - INJECTION_COST, added };
 }

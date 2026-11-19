@@ -16,7 +16,7 @@ async function getLandmarker() {
     })().catch((error) => {
       landmarkerPromise = null;
       console.error(error);
-      throw new Error('手部定位模型加载失败。');
+      throw new Error('Hand detection model failed to load.');
     });
   }
   return landmarkerPromise;
@@ -27,12 +27,12 @@ export function makeCanvas(width = SIZE, height = SIZE) {
 }
 
 export async function fileToCanvas(file) {
-  if (!file.type.startsWith('image/')) throw new Error('图片格式无效。');
-  if (file.size > 25 * 1024 * 1024) throw new Error('图片超过 25 MB。');
+  if (!file.type.startsWith('image/')) throw new Error('Invalid image format.');
+  if (file.size > 25 * 1024 * 1024) throw new Error('Image exceeds 25 MB.');
   let bitmap;
   try {
     bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-    if (bitmap.width < 128 || bitmap.height < 128) throw new Error('图片太小（最小 128×128）。');
+    if (bitmap.width < 128 || bitmap.height < 128) throw new Error('Image is too small (minimum 128×128).');
     const scale = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height));
     const canvas = makeCanvas(Math.round(bitmap.width * scale), Math.round(bitmap.height * scale));
     const ctx = canvas.getContext('2d');
@@ -41,15 +41,15 @@ export async function fileToCanvas(file) {
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     return canvas;
   } catch (error) {
-    throw new Error(error.message.startsWith('图片') ? error.message : '无法读取图片。');
+    throw new Error(error.message.startsWith('Image is too small') ? error.message : 'Could not read image.');
   } finally { bitmap?.close(); }
 }
 
 export async function normalizePalm(source) {
   const detector = await getLandmarker();
   const result = detector.detect(source);
-  if (!result.landmarks.length) throw new Error('未检测到手掌。');
-  if (result.landmarks.length !== 1) throw new Error('检测到多只手。');
+  if (!result.landmarks.length) throw new Error('No hand detected.');
+  if (result.landmarks.length !== 1) throw new Error('Multiple hands detected.');
   const points = result.landmarks[0].map(({ x, y }) => [x * source.width, y * source.height]);
   const cx = points.reduce((sum, p) => sum + p[0], 0) / points.length;
   const cy = points.reduce((sum, p) => sum + p[1], 0) / points.length;

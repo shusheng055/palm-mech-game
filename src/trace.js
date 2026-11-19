@@ -129,20 +129,20 @@ export function traceMask(mask, probabilities, size = 512) {
       missing.push(LINE_NAMES[classId - 1]);
     } else lines.push({ classId, name: LINE_NAMES[classId - 1], points, confidence });
   }
-  if (missing.length) throw new Error(`未可靠识别：${missing.join('、')}。`);
+  if (missing.length) throw new Error(`Unable to detect: ${missing.join(', ')}.`);
   return lines;
 }
 
 export function decodeLogits(logits, size = 512) {
   const plane = size * size;
-  if (logits.length !== 4 * plane) throw new Error('模型输出尺寸不正确。');
+  if (logits.length !== 4 * plane) throw new Error('Invalid model output dimensions.');
   const mask = new Uint8Array(plane);
   const probabilities = new Float32Array(plane);
   for (let i = 0; i < plane; i++) {
     let best = 0;
     for (let c = 1; c < 4; c++) if (logits[c * plane + i] > logits[best * plane + i]) best = c;
     const maximum = logits[best * plane + i];
-    if (!Number.isFinite(maximum)) throw new Error('模型输出无效。');
+    if (!Number.isFinite(maximum)) throw new Error('Invalid model output.');
     let sum = 0;
     for (let c = 0; c < 4; c++) sum += Math.exp(logits[c * plane + i] - maximum);
     mask[i] = best;

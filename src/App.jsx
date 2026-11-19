@@ -34,7 +34,7 @@ export default function App() {
   useEffect(() => {
     if (cameraOpen && video.current && stream.current) {
       video.current.srcObject = stream.current;
-      video.current.play().catch(() => setError('摄像头预览失败。'));
+      video.current.play().catch(() => setError('Camera preview failed.'));
     }
   }, [cameraOpen]);
 
@@ -107,7 +107,7 @@ export default function App() {
   async function startCamera() {
     setError('');
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-      setError('摄像头不可用。');
+      setError('Camera unavailable.');
       return;
     }
     const request = ++cameraGeneration.current;
@@ -119,9 +119,9 @@ export default function App() {
       setCameraOpen(true);
     } catch (e) {
       if (request !== cameraGeneration.current) return;
-      const reason = e.name === 'NotAllowedError' ? '摄像头权限被拒绝。'
-        : e.name === 'NotFoundError' ? '未找到摄像头。'
-          : '无法打开摄像头。';
+      const reason = e.name === 'NotAllowedError' ? 'Camera access denied.'
+        : e.name === 'NotFoundError' ? 'No camera found.'
+          : 'Could not open camera.';
       setError(reason);
     } finally { if (request === cameraGeneration.current) setCameraStarting(false); }
   }
@@ -145,13 +145,13 @@ export default function App() {
         cleanup();
         target.terminate();
         worker.current = null;
-        reject(new Error('本地推理失败。'));
+        reject(new Error('Local inference failed.'));
       };
       const timeout = setTimeout(() => {
         cleanup();
         target.terminate();
         worker.current = null;
-        reject(new Error('识别超时。'));
+        reject(new Error('Detection timed out.'));
       }, 180000);
       target.addEventListener('message', onMessage);
       target.addEventListener('error', onError);
@@ -184,7 +184,7 @@ export default function App() {
 
   function takePhoto() {
     const source = video.current;
-    if (!source?.videoWidth || source.readyState < 2) { setError('摄像头未就绪。'); return; }
+    if (!source?.videoWidth || source.readyState < 2) { setError('Camera not ready.'); return; }
     const scale = Math.min(1, 1024 / Math.max(source.videoWidth, source.videoHeight));
     const canvas = makeCanvas(Math.round(source.videoWidth * scale), Math.round(source.videoHeight * scale));
     canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height);
@@ -217,27 +217,27 @@ export default function App() {
   }
 
   return <main>
-    <h1>手相改造</h1>
+    <h1>Palm Modification</h1>
     <div className="toolbar">
-      <input ref={fileInput} aria-label="上传手掌照片" type="file" hidden accept="image/jpeg,image/png,image/webp,image/avif,image/heic" disabled={busy || cameraStarting} onChange={event => {
+      <input ref={fileInput} aria-label="Upload Photo" type="file" hidden accept="image/jpeg,image/png,image/webp,image/avif,image/heic" disabled={busy || cameraStarting} onChange={event => {
         const file = event.target.files[0];
         event.target.value = '';
         if (file) ingest(() => fileToCanvas(file));
       }} />
-      <button onClick={() => fileInput.current?.click()} disabled={busy || cameraStarting}>上传手掌照片</button>
-      {!cameraOpen && <button onClick={startCamera} disabled={busy || cameraStarting}>{cameraStarting ? '等待摄像头权限…' : '打开摄像头'}</button>}
-      {(cameraOpen || cameraStarting) && <button onClick={closeCamera}>关闭摄像头</button>}
+      <button onClick={() => fileInput.current?.click()} disabled={busy || cameraStarting}>Upload Photo</button>
+      {!cameraOpen && <button onClick={startCamera} disabled={busy || cameraStarting}>{cameraStarting ? 'Requesting Camera…' : 'Open Camera'}</button>}
+      {(cameraOpen || cameraStarting) && <button onClick={closeCamera}>Close Camera</button>}
     </div>
-    {cameraOpen && <section className="camera-panel" aria-label="摄像头预览">
-      <video ref={video} muted playsInline autoPlay aria-label="摄像头画面" />
-      <button onClick={takePhoto}>拍照并识别</button>
+    {cameraOpen && <section className="camera-panel" aria-label="Camera Preview">
+      <video ref={video} muted playsInline autoPlay aria-label="Camera Feed" />
+      <button onClick={takePhoto}>Take Photo</button>
     </section>}
-    {busy && <p role="status" aria-live="polite" className="status">识别中…</p>}
+    {busy && <p role="status" aria-live="polite" className="status">Detecting…</p>}
     {error && <p role="alert" className="error">{error}</p>}
     <div className="game-layout">
-      <section className="photo-panel" aria-label="手掌改造画布">
+      <section className="photo-panel" aria-label="Palm Modification Canvas">
         <div className={`stage${pending ? ' placing' : ''}`} data-testid="stage" tabIndex={pending ? 0 : -1}
-          aria-label="手掌画布"
+          aria-label="Palm Canvas"
           onPointerDown={event => { if (pending) { dragging.current = true; event.currentTarget.setPointerCapture(event.pointerId); movePending(event); } }}
           onPointerMove={event => { if (dragging.current) movePending(event); }}
           onPointerUp={() => { dragging.current = false; }} onPointerCancel={() => { dragging.current = false; }}
@@ -247,32 +247,32 @@ export default function App() {
             const delta = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
             if (delta) { event.preventDefault(); const step = event.shiftKey ? 20 : 4; setPending(part => ({ ...part, x: Math.max(0, Math.min(SIZE, part.x + delta[0] * step)), y: Math.max(0, Math.min(SIZE, part.y + delta[1] * step)) })); }
           }}>
-          <canvas ref={photoCanvas} width={SIZE} height={SIZE} className="photo-layer" aria-label="照片底层" />
-          <canvas ref={lineCanvas} width={SIZE} height={SIZE} className="line-layer" aria-label="掌纹和注射中层" />
-          <canvas ref={partCanvas} width={SIZE} height={SIZE} className="part-layer" aria-label="机械顶层" />
+          <canvas ref={photoCanvas} width={SIZE} height={SIZE} className="photo-layer" aria-label="Photo Layer" />
+          <canvas ref={lineCanvas} width={SIZE} height={SIZE} className="line-layer" aria-label="Palm Line Layer" />
+          <canvas ref={partCanvas} width={SIZE} height={SIZE} className="part-layer" aria-label="Mechanical Layer" />
         </div>
       </section>
       <div className="controls">
-        <section aria-label="评分">
-          <div className="numbers"><p>总分 <strong data-testid="score">{ready ? score.total : '—'}</strong></p><p>金钱 <strong data-testid="money">¥{game.money}</strong></p></div>
+        <section aria-label="Score">
+          <div className="numbers"><p>Score <strong data-testid="score">{ready ? score.total : '—'}</strong></p><p>Cash <strong data-testid="money">¥{game.money}</strong></p></div>
           <table>
-            <thead><tr><th>掌纹</th><th>总线长</th><th>有效可见长度</th></tr></thead>
+            <thead><tr><th>Line</th><th>Total Length</th><th>Visible Length</th></tr></thead>
             <tbody>{LINE_NAMES.map((name, index) => <tr key={name}><th scope="row">{index + 1} {name}</th><td>{ready ? `${pathLength(game.lines[index].points).toFixed(1)} px` : '—'}</td><td data-testid={`length-${index}`}>{ready ? `${score.lengths[index].toFixed(1)} px` : '—'}</td></tr>)}</tbody>
           </table>
         </section>
-        <section aria-label="机械改造">
-          <h2>机械改造</h2>
+        <section aria-label="Mechanical Mods">
+          <h2>Mechanical Mods</h2>
           <div className="offers">{game.offers.map(offer => <button key={offer.id} className={pending?.id === offer.id ? 'selected' : ''} aria-pressed={pending?.id === offer.id} disabled={!ready || !images} onClick={() => choosePart(offer)}>
             <img src={assetUrl(`parts/${offer.type}.svg`)} alt="" /><span>{offer.name}</span><small>{offer.width}×{offer.height} px<br />¥{offer.rate}/100 px²</small>
           </button>)}</div>
           {pending && <div className="placement">
-            <div className="toolbar"><button onClick={placePart} disabled={reward.money === 0}>安装并获得 ¥{reward.money}</button><button onClick={() => setPending(null)}>取消放置</button><small>{reward.newArea.toLocaleString()} px²</small></div>
+            <div className="toolbar"><button onClick={placePart} disabled={reward.money === 0}>Install +¥{reward.money}</button><button onClick={() => setPending(null)}>Cancel</button><small>{reward.newArea.toLocaleString('en-US')} px²</small></div>
           </div>}
         </section>
-        <section aria-label="购买注射">
-          <h2>注射延长</h2>
-          <div className="toolbar"><label>选择掌纹 <select aria-label="选择掌纹" value={selectedLine} disabled={!ready} onChange={event => setSelectedLine(Number(event.target.value))}>{LINE_NAMES.map((name, i) => <option key={name} value={i}>{name}</option>)}</select></label>
-            <button onClick={inject} disabled={!ready || game.money < INJECTION_COST}>购买注射 · ¥{INJECTION_COST}</button></div>
+        <section aria-label="Injections">
+          <h2>Injections</h2>
+          <div className="toolbar"><label>Choose Line <select aria-label="Choose Line" value={selectedLine} disabled={!ready} onChange={event => setSelectedLine(Number(event.target.value))}>{LINE_NAMES.map((name, i) => <option key={name} value={i}>{name}</option>)}</select></label>
+            <button onClick={inject} disabled={!ready || game.money < INJECTION_COST}>Buy Injection (¥{INJECTION_COST})</button></div>
         </section>
       </div>
     </div>
