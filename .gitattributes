@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.onnx binary
+*.task binary
+*.png binary
+*.y4m binary

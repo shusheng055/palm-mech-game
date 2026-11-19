@@ -1,0 +1,47 @@
+* { box-sizing: border-box; }
+:root { color: #000; background: #fff; font-family: Arial, "Microsoft YaHei", sans-serif; font-size: 16px; }
+body { margin: 0; }
+main { max-width: 1160px; margin: 0 auto; padding: 24px; }
+h1 { margin: 0 0 16px; font-size: 26px; font-weight: 600; }
+h1 span { font-size: 16px; font-weight: 400; margin-left: 12px; }
+h2 { font-size: 19px; margin: 0 0 12px; }
+p { line-height: 1.55; margin: 12px 0; }
+button, select, input { font: inherit; color: #000; }
+button, select { border: 1px solid #000; border-radius: 0; background: #fff; padding: 8px 10px; }
+button { cursor: pointer; }
+button:disabled { opacity: .4; cursor: default; }
+button:not(:disabled):hover { outline: 1px solid #000; }
+button:focus-visible, select:focus-visible, input:focus-visible, .stage:focus-visible { outline: 2px solid #000; outline-offset: 3px; }
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.upload { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border: 1px solid #000; padding: 8px 10px; }
+.upload input { max-width: 255px; font-size: 14px; }
+.hint, small { font-size: 14px; line-height: 1.5; }
+.status { border: 1px solid #000; padding: 10px; }
+.error { border: 2px solid #000; padding: 10px; font-weight: 600; overflow-wrap: anywhere; }
+.game-layout { display: grid; grid-template-columns: minmax(0, 512px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.photo-panel { min-width: 0; }
+.stage { width: 100%; aspect-ratio: 1; position: relative; border: 1px solid #000; overflow: hidden; background: #fff; }
+.stage.placing { cursor: move; touch-action: none; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.photo-layer { z-index: 0; }
+.line-layer { z-index: 1; }
+.part-layer { z-index: 2; }
+.placeholder { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; pointer-events: none; }
+.controls { min-width: 0; }
+.controls section { border: 1px solid #000; padding: 14px; margin-bottom: 16px; }
+.numbers { display: flex; flex-wrap: wrap; gap: 20px; }
+.numbers p { margin-top: 0; }
+.numbers strong { font-size: 24px; font-variant-numeric: tabular-nums; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; border: 1px solid #000; padding: 8px 6px; }
+.offers { display: flex; gap: 8px; }
+.offers button { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 5px; }
+.offers button.selected { outline: 2px solid #000; outline-offset: -3px; }
+.offers img { width: 72px; height: 72px; object-fit: contain; }
+.offers small { font-size: 14px; }
+.placement { border-top: 1px solid #000; margin-top: 14px; }
+.camera-panel { width: min(100%, 512px); border: 1px solid #000; padding: 10px; margin-top: 14px; }
+.camera-panel video { display: block; width: 100%; max-height: 360px; object-fit: contain; margin-bottom: 10px; }
+select { max-width: 100%; }
+@media (max-width: 850px) { .game-layout { grid-template-columns: 1fr; } .photo-panel { max-width: 512px; } }
+@media (max-width: 480px) { main { padding: 14px; } h1 span { display: block; margin: 8px 0 0; } .upload { width: 100%; } .upload input { max-width: 100%; } .controls section { padding: 10px; } }

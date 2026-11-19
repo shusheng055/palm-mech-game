@@ -1,0 +1,25 @@
+{
+  "name": "palm-mech-game",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "prebuild": "node scripts/copy-runtime.mjs",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test tests/core.test.mjs",
+    "smoke": "playwright test",
+    "postinstall": "node scripts/copy-runtime.mjs"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "0.10.22-rc.20250304",
+    "onnxruntime-web": "1.20.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "vite": "6.4.6"
+  }
+}
