@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { extendLine, pathLength, purchaseInjection, replacementReward, scoreLines, unionMasks, visibleLength } from '../src/game.js';
 import { decodeLogits, skeletonize, traceMask } from '../src/trace.js';
+import { palmOutline, polygonMask } from '../src/palm-region.js';
 
 test('length measures line geometry rather than mask area', () => {
   assert.equal(pathLength([[0, 0], [3, 4], [6, 8]]), 10);
@@ -19,9 +20,49 @@ test('covered line segments are excluded; transparent holes stay visible', () =>
 test('overlapping mechanical parts only pay for newly covered pixels', () => {
   const a = Uint8Array.from([1, 1, 0, 0]);
   const b = Uint8Array.from([0, 1, 1, 0]);
+  const palm = Uint8Array.from([1, 1, 1, 1]);
   assert.deepEqual([...unionMasks([a, b], 2)], [1, 1, 1, 0]);
-  assert.deepEqual(replacementReward(a, b, 100), { newArea: 1, money: 1 });
-  assert.deepEqual(replacementReward(a, a, 100), { newArea: 0, money: 0 });
+  assert.deepEqual(replacementReward(a, b, palm, 100), { newArea: 1, money: 1 });
+  assert.deepEqual(replacementReward(a, a, palm, 100), { newArea: 0, money: 0 });
+});
+
+test('reward grows with newly covered palm area and is zero outside the palm', () => {
+  const palm = Uint8Array.from([0, 1, 1, 1, 0, 0]);
+  const empty = new Uint8Array(palm.length);
+  const outside = Uint8Array.from([1, 0, 0, 0, 1, 1]);
+  const partial = Uint8Array.from([1, 0, 1, 0, 1, 0]);
+  const within = Uint8Array.from([0, 1, 1, 1, 0, 0]);
+  const rate = 100;
+  assert.deepEqual(replacementReward(empty, outside, palm, rate), { newArea: 0, money: 0 });
+  assert.deepEqual(replacementReward(empty, partial, palm, rate), { newArea: 1, money: 1 });
+  assert.deepEqual(replacementReward(empty, within, palm, rate), { newArea: 3, money: 3 });
+  assert.deepEqual(replacementReward(partial, within, palm, rate), { newArea: 2, money: 2 });
+});
+
+test('palm outline includes the palm core but excludes fingers and background', () => {
+  const points = Array.from({ length: 21 }, () => [256, 300]);
+  Object.assign(points, {
+    0: [256, 430], 2: [130, 350], 4: [55, 260],
+    5: [185, 250], 8: [150, 70], 9: [245, 235], 12: [245, 40],
+    13: [300, 245], 16: [320, 80], 17: [350, 265], 20: [410, 135],
+  });
+  const mask = polygonMask(palmOutline(points), 512);
+  assert.equal(mask[340 * 512 + 256], 1);
+  assert.equal(mask[100 * 512 + 245], 0);
+  assert.equal(mask[350 * 512 + 40], 0);
+  assert.equal(mask[475 * 512 + 256], 0);
+  const mirrored = polygonMask(palmOutline(points.map(([x, y]) => [512 - x, y])), 512);
+  let difference = 0;
+  for (let y = 0; y < 512; y++) for (let x = 0; x < 512; x++) {
+    if (mask[y * 512 + x] !== mirrored[y * 512 + (511 - x)]) difference++;
+  }
+  assert.ok(difference <= 4, 'The same palm must be eligible after mirroring.');
+  assert.throws(() => palmOutline(Array.from({ length: 21 }, () => [0, 0])), /Palm area/);
+});
+
+test('polygon masks are clipped to the playable image', () => {
+  const mask = polygonMask([[-2, -2], [3, -2], [3, 2], [-2, 2]], 4);
+  assert.deepEqual([...mask], [1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 });
 
 test('injection costs exactly 80 and adds 24 pixels to the selected line only', () => {

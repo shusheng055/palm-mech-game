@@ -1,4 +1,5 @@
 import { SIZE } from './game.js';
+import { palmOutline, polygonMask } from './palm-region.js';
 
 export const assetUrl = (path) => new URL(`${import.meta.env.BASE_URL}${path}`, document.baseURI).href;
 let landmarkerPromise;
@@ -73,6 +74,17 @@ export async function normalizePalm(source) {
   ctx.translate(-x0, -y0);
   ctx.rotate(angle);
   ctx.translate(-cx, -cy);
+  // Project the detected palm through the identical crop, rotation, scale
+  // and reflection as the photo, keeping all masks in game coordinates.
+  const transform = ctx.getTransform();
+  const project = ([x, y]) => [
+    transform.a * x + transform.c * y + transform.e,
+    transform.b * x + transform.d * y + transform.f,
+  ];
+  const palmMask = polygonMask(palmOutline(points).map(project), SIZE);
+  const photoMask = polygonMask([[0, 0], [source.width, 0], [source.width, source.height], [0, source.height]].map(project), SIZE);
+  for (let i = 0; i < palmMask.length; i++) if (!photoMask[i]) palmMask[i] = 0;
+  if (!palmMask.some(value => value === 1)) throw new Error('Palm area could not be detected.');
   ctx.drawImage(source, 0, 0);
-  return normalized;
+  return { photo: normalized, palmMask };
 }

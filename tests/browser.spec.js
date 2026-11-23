@@ -97,6 +97,49 @@ test('a real ONNX rejection leaves no invented lines or score', async ({ page })
   expect(await page.locator('.line-layer').evaluate(canvas => canvas.getContext('2d').getImageData(0, 0, 512, 512).data.some(value => value > 0))).toBe(false);
 });
 
+test('mechanical reward depends on newly covered palm pixels, including zero outside', async ({ page }) => {
+  await page.goto('/');
+  await recognize(page);
+  const startingScore = await page.getByTestId('score').innerText();
+  await page.locator('.offers button').first().click();
+  const stage = page.getByTestId('stage');
+  const box = await stage.boundingBox();
+  const move = (x, y) => stage.click({ position: { x: x * box.width / 512, y: y * box.height / 512 } });
+  const install = page.getByRole('button', { name: /Install \+¥/ });
+  const amount = async () => Number((await install.innerText()).match(/¥(\d+)/)[1]);
+  const area = async () => Number((await page.locator('.placement small').innerText()).replace(/[^0-9]/g, ''));
+
+  // The normalized test photo's palm starts below y=210.
+  await move(86, 86);
+  await expect(install).toHaveText('Install +¥0');
+  await expect(page.locator('.placement small')).toHaveText('0 px²');
+  await expect(page.getByTestId('score')).toHaveText(startingScore);
+  await move(276, 215);
+  await expect.poll(amount).toBeGreaterThan(0);
+  const partialMoney = await amount(), partialArea = await area();
+  await move(276, 333);
+  await expect.poll(amount).toBeGreaterThan(partialMoney);
+  expect(await area()).toBeGreaterThan(partialArea);
+  await expect(page.getByTestId('money')).toHaveText('¥0');
+
+  // A player can still install an off-palm part, but receives no cash.
+  await move(86, 86);
+  await expect(install).toHaveText('Install +¥0');
+  await expect(install).toBeEnabled();
+  await install.click();
+  await expect(page.getByTestId('money')).toHaveText('¥0');
+  await expect(page.locator('.offers button')).toHaveCount(2);
+  expect(await page.locator('.part-layer').evaluate(canvas => canvas.getContext('2d').getImageData(0, 0, 512, 512).data.some((value, i) => i % 4 === 3 && value > 0))).toBe(true);
+
+  // A second part on the palm pays exactly the previewed amount.
+  await page.locator('.offers button').first().click();
+  await move(276, 333);
+  await expect.poll(amount).toBeGreaterThan(0);
+  const earned = await amount();
+  await install.click();
+  await expect(page.getByTestId('money')).toHaveText(`¥${earned}`);
+});
+
 test('missing model reports HTTP 404 and never enables gameplay', async ({ page }) => {
   await page.route('**/models/student_fp16.onnx', route => route.fulfill({ status: 404, body: 'Missing model' }));
   await page.goto('/');
