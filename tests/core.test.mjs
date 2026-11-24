@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { extendLine, pathLength, purchaseInjection, replacementReward, scoreLines, unionMasks, visibleLength } from '../src/game.js';
 import { decodeLogits, skeletonize, traceMask } from '../src/trace.js';
-import { palmOutline, polygonMask } from '../src/palm-region.js';
+import { decodeBackgroundMask, handSeed, validateHandMask } from '../src/hand-segmentation.js';
 
 test('length measures line geometry rather than mask area', () => {
   assert.equal(pathLength([[0, 0], [3, 4], [6, 8]]), 10);
@@ -20,49 +20,50 @@ test('covered line segments are excluded; transparent holes stay visible', () =>
 test('overlapping mechanical parts only pay for newly covered pixels', () => {
   const a = Uint8Array.from([1, 1, 0, 0]);
   const b = Uint8Array.from([0, 1, 1, 0]);
-  const palm = Uint8Array.from([1, 1, 1, 1]);
+  const background = new Uint8Array(4);
   assert.deepEqual([...unionMasks([a, b], 2)], [1, 1, 1, 0]);
-  assert.deepEqual(replacementReward(a, b, palm, 100), { newArea: 1, money: 1 });
-  assert.deepEqual(replacementReward(a, a, palm, 100), { newArea: 0, money: 0 });
+  assert.deepEqual(replacementReward(a, b, background, 100), { newArea: 1, money: 1 });
+  assert.deepEqual(replacementReward(a, a, background, 100), { newArea: 0, money: 0 });
 });
 
-test('reward grows with newly covered palm area and is zero outside the palm', () => {
-  const palm = Uint8Array.from([0, 1, 1, 1, 0, 0]);
-  const empty = new Uint8Array(palm.length);
+test('reward decreases with model background coverage and is zero on background', () => {
+  const background = Uint8Array.from([1, 0, 0, 0, 1, 1]);
+  const empty = new Uint8Array(background.length);
   const outside = Uint8Array.from([1, 0, 0, 0, 1, 1]);
   const partial = Uint8Array.from([1, 0, 1, 0, 1, 0]);
   const within = Uint8Array.from([0, 1, 1, 1, 0, 0]);
   const rate = 100;
-  assert.deepEqual(replacementReward(empty, outside, palm, rate), { newArea: 0, money: 0 });
-  assert.deepEqual(replacementReward(empty, partial, palm, rate), { newArea: 1, money: 1 });
-  assert.deepEqual(replacementReward(empty, within, palm, rate), { newArea: 3, money: 3 });
-  assert.deepEqual(replacementReward(partial, within, palm, rate), { newArea: 2, money: 2 });
+  assert.deepEqual(replacementReward(empty, outside, background, rate), { newArea: 0, money: 0 });
+  assert.deepEqual(replacementReward(empty, partial, background, rate), { newArea: 1, money: 1 });
+  assert.deepEqual(replacementReward(empty, within, background, rate), { newArea: 3, money: 3 });
+  assert.deepEqual(replacementReward(partial, within, background, rate), { newArea: 2, money: 2 });
 });
 
-test('palm outline includes the palm core but excludes fingers and background', () => {
-  const points = Array.from({ length: 21 }, () => [256, 300]);
-  Object.assign(points, {
-    0: [256, 430], 2: [130, 350], 4: [55, 260],
-    5: [185, 250], 8: [150, 70], 9: [245, 235], 12: [245, 40],
-    13: [300, 245], 16: [320, 80], 17: [350, 265], 20: [410, 135],
-  });
-  const mask = polygonMask(palmOutline(points), 512);
-  assert.equal(mask[340 * 512 + 256], 1);
-  assert.equal(mask[100 * 512 + 245], 0);
-  assert.equal(mask[350 * 512 + 40], 0);
-  assert.equal(mask[475 * 512 + 256], 0);
-  const mirrored = polygonMask(palmOutline(points.map(([x, y]) => [512 - x, y])), 512);
-  let difference = 0;
-  for (let y = 0; y < 512; y++) for (let x = 0; x < 512; x++) {
-    if (mask[y * 512 + x] !== mirrored[y * 512 + (511 - x)]) difference++;
-  }
-  assert.ok(difference <= 4, 'The same palm must be eligible after mirroring.');
-  assert.throws(() => palmOutline(Array.from({ length: 21 }, () => [0, 0])), /Palm area/);
+test('MagicTouch categories distinguish connected hand foreground from background and specks', () => {
+  const categories = new Uint8Array(25).fill(255);
+  for (const i of [6, 7, 11, 12, 24]) categories[i] = 0;
+  const background = decodeBackgroundMask(categories, 5, [1.5, 1.5]);
+  assert.equal(background[6], 0);
+  assert.equal(background[7], 0);
+  assert.equal(background[11], 0);
+  assert.equal(background[12], 0);
+  assert.equal(background[0], 1);
+  assert.equal(background[24], 1);
+  assert.equal(background.reduce((sum, value) => sum + value, 0), 21);
 });
 
-test('polygon masks are clipped to the playable image', () => {
-  const mask = polygonMask([[-2, -2], [3, -2], [3, 2], [-2, 2]], 4);
-  assert.deepEqual([...mask], [1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+test('invalid or empty segmentation masks do not become gameplay areas', () => {
+  assert.throws(() => decodeBackgroundMask(new Uint8Array(9), 3, [1, 1]), /Hand segmentation failed/);
+  assert.throws(() => decodeBackgroundMask(new Uint8Array(9).fill(255), 3, [1, 1]), /Hand segmentation failed/);
+  assert.throws(() => decodeBackgroundMask(new Uint8Array(9).fill(1), 3, [1, 1]), /Invalid hand segmentation mask/);
+  assert.throws(() => decodeBackgroundMask(new Uint8Array(8), 3, [1, 1]), /Invalid hand segmentation mask/);
+  const points = Array.from({ length: 21 }, () => [10, 10]);
+  points[0] = [12, 20];
+  points[9] = [12, 10];
+  assert.deepEqual(handSeed(points, 32), [12, 15]);
+  const background = new Uint8Array(32 * 32).fill(1);
+  background[1] = 0;
+  assert.throws(() => validateHandMask(background, points, 32), /Hand segmentation failed/);
 });
 
 test('injection costs exactly 80 and adds 24 pixels to the selected line only', () => {

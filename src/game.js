@@ -43,10 +43,10 @@ export function unionMasks(masks, size = SIZE) {
   return union;
 }
 
-export function replacementReward(existing, candidate, palmMask, rate) {
+export function replacementReward(existing, candidate, backgroundMask, rate) {
   let newArea = 0;
   for (let i = 0; i < candidate.length; i++) {
-    if (palmMask[i] && candidate[i] && !existing[i]) newArea++;
+    if (candidate[i] && !existing[i] && backgroundMask[i] === 0) newArea++;
   }
   return { newArea, money: Math.floor(newArea * rate / 100) };
 }

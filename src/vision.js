@@ -1,8 +1,9 @@
 import { SIZE } from './game.js';
-import { palmOutline, polygonMask } from './palm-region.js';
+import { decodeBackgroundMask, handSeed, validateHandMask } from './hand-segmentation.js';
 
 export const assetUrl = (path) => new URL(`${import.meta.env.BASE_URL}${path}`, document.baseURI).href;
 let landmarkerPromise;
+let segmenterPromise;
 
 async function getLandmarker() {
   if (!landmarkerPromise) {
@@ -21,6 +22,40 @@ async function getLandmarker() {
     });
   }
   return landmarkerPromise;
+}
+
+async function getHandSegmenter() {
+  if (!segmenterPromise) {
+    segmenterPromise = (async () => {
+      const { FilesetResolver, InteractiveSegmenter } = await import('@mediapipe/tasks-vision');
+      const files = await FilesetResolver.forVisionTasks(assetUrl('runtime/vision'));
+      return InteractiveSegmenter.createFromOptions(files, {
+        baseOptions: { modelAssetPath: assetUrl('models/magic_touch.tflite'), delegate: 'CPU' },
+        outputCategoryMask: true,
+        outputConfidenceMasks: false,
+      });
+    })().catch(error => {
+      segmenterPromise = null;
+      console.error(error);
+      throw new Error('Hand segmentation model failed to load.');
+    });
+  }
+  return segmenterPromise;
+}
+
+export async function segmentHandBackground(photo, points) {
+  const seed = handSeed(points, SIZE);
+  const segmenter = await getHandSegmenter();
+  const result = segmenter.segment(photo, { keypoint: { x: seed[0] / SIZE, y: seed[1] / SIZE } });
+  try {
+    const mask = result.categoryMask;
+    if (!mask || mask.width !== SIZE || mask.height !== SIZE) throw new Error('Invalid hand segmentation mask.');
+    const backgroundMask = decodeBackgroundMask(mask.getAsUint8Array(), SIZE, seed);
+    validateHandMask(backgroundMask, points, SIZE);
+    return backgroundMask;
+  } finally {
+    result.close();
+  }
 }
 
 export function makeCanvas(width = SIZE, height = SIZE) {
@@ -74,17 +109,13 @@ export async function normalizePalm(source) {
   ctx.translate(-x0, -y0);
   ctx.rotate(angle);
   ctx.translate(-cx, -cy);
-  // Project the detected palm through the identical crop, rotation, scale
-  // and reflection as the photo, keeping all masks in game coordinates.
+  // Project hand landmarks through the same transform as the photo so the
+  // segmentation prompt refers to the correct position in the game canvas.
   const transform = ctx.getTransform();
   const project = ([x, y]) => [
     transform.a * x + transform.c * y + transform.e,
     transform.b * x + transform.d * y + transform.f,
   ];
-  const palmMask = polygonMask(palmOutline(points).map(project), SIZE);
-  const photoMask = polygonMask([[0, 0], [source.width, 0], [source.width, source.height], [0, source.height]].map(project), SIZE);
-  for (let i = 0; i < palmMask.length; i++) if (!photoMask[i]) palmMask[i] = 0;
-  if (!palmMask.some(value => value === 1)) throw new Error('Palm area could not be detected.');
   ctx.drawImage(source, 0, 0);
-  return { photo: normalized, palmMask };
+  return { photo: normalized, points: points.map(project) };
 }

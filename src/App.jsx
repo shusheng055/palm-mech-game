@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { INJECTION_COST, LINE_NAMES, SIZE, pathLength, purchaseInjection, replacementReward, scoreLines, unionMasks } from './game.js';
-import { assetUrl, fileToCanvas, makeCanvas, normalizePalm } from './vision.js';
+import { assetUrl, fileToCanvas, makeCanvas, normalizePalm, segmentHandBackground } from './vision.js';
 import { drawPart, loadPartImages, partMask, randomOffers } from './parts.js';
 
-const emptyGame = () => ({ photo: null, palmMask: null, lines: [], parts: [], offers: [], money: 0 });
+const emptyGame = () => ({ photo: null, backgroundMask: null, lines: [], parts: [], offers: [], money: 0 });
 
 export default function App() {
   const [game, setGame] = useState(emptyGame);
@@ -42,9 +42,9 @@ export default function App() {
   const pendingCoverage = useMemo(() => pending && images ? partMask(pending, images[pending.type]) : null, [pending, images]);
   const coverage = useMemo(() => pendingCoverage ? unionMasks([existingCoverage, pendingCoverage]) : existingCoverage, [existingCoverage, pendingCoverage]);
   const score = useMemo(() => scoreLines(game.lines, coverage), [game.lines, coverage]);
-  const reward = useMemo(() => pendingCoverage && game.palmMask
-    ? replacementReward(existingCoverage, pendingCoverage, game.palmMask, pending.rate)
-    : { newArea: 0, money: 0 }, [existingCoverage, pendingCoverage, pending, game.palmMask]);
+  const reward = useMemo(() => pendingCoverage && game.backgroundMask
+    ? replacementReward(existingCoverage, pendingCoverage, game.backgroundMask, pending.rate)
+    : { newArea: 0, money: 0 }, [existingCoverage, pendingCoverage, pending, game.backgroundMask]);
   const ready = game.lines.length === 3 && !busy;
 
   useEffect(() => {
@@ -173,12 +173,14 @@ export default function App() {
       const source = await getSource();
       if (id !== generation.current) return;
       setGame({ ...emptyGame(), photo: source });
-      const { photo, palmMask } = await normalizePalm(source);
+      const { photo, points } = await normalizePalm(source);
       if (id !== generation.current) return;
       setGame({ ...emptyGame(), photo });
       const result = await infer(photo, id);
       if (id !== generation.current) return;
-      setGame({ ...emptyGame(), photo, palmMask, lines: result.lines, offers: randomOffers() });
+      const backgroundMask = await segmentHandBackground(photo, points);
+      if (id !== generation.current) return;
+      setGame({ ...emptyGame(), photo, backgroundMask, lines: result.lines, offers: randomOffers() });
     } catch (e) {
       if (id === generation.current) setError(e.message);
     } finally { if (id === generation.current) setBusy(false); }
@@ -198,7 +200,7 @@ export default function App() {
   }
 
   function placePart() {
-    if (!pending || !pendingCoverage || !game.palmMask) return;
+    if (!pending || !pendingCoverage || !game.backgroundMask) return;
     setGame({ ...game, parts: [...game.parts, { ...pending, mask: pendingCoverage }], offers: game.offers.filter(offer => offer.id !== pending.id), money: game.money + reward.money });
     setPending(null);
   }

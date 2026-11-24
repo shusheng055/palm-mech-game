@@ -18,6 +18,15 @@
 - Documentation: https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker
 - Runtime JS and WASM are copied unchanged from the installed package to `public/runtime/vision/`.
 
+## MediaPipe MagicTouch Interactive Segmenter
+
+- Model authors: Valentin Bazarevsky and Ben Hahn, Google (March 2023).
+- License: Apache License 2.0; see `mediapipe-LICENSE.txt`.
+- Model card: https://storage.googleapis.com/mediapipe-assets/Model%20Card%20MagicTouch.pdf
+- Source: https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/1/magic_touch.tflite
+- Bundled unchanged as `public/models/magic_touch.tflite` (6,227,884 bytes, SHA-256 `e24338a717c1b7ad8d159666677ef400babb7f33b8ad60c4d96db4ecf694cd25`).
+- The model produces an object/background pixel mask using an automatic point prompt from the detected hand landmarks.
+
 ## ONNX Runtime Web
 
 - Source: https://github.com/microsoft/onnxruntime

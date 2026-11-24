@@ -97,7 +97,7 @@ test('a real ONNX rejection leaves no invented lines or score', async ({ page })
   expect(await page.locator('.line-layer').evaluate(canvas => canvas.getContext('2d').getImageData(0, 0, 512, 512).data.some(value => value > 0))).toBe(false);
 });
 
-test('mechanical reward depends on newly covered palm pixels, including zero outside', async ({ page }) => {
+test('mechanical reward follows model hand/background segmentation', async ({ page }) => {
   await page.goto('/');
   await recognize(page);
   const startingScore = await page.getByTestId('score').innerText();
@@ -109,12 +109,13 @@ test('mechanical reward depends on newly covered palm pixels, including zero out
   const amount = async () => Number((await install.innerText()).match(/¥(\d+)/)[1]);
   const area = async () => Number((await page.locator('.placement small').innerText()).replace(/[^0-9]/g, ''));
 
-  // The normalized test photo's palm starts below y=210.
-  await move(86, 86);
+  // The upper-left corner is model background. The right edge partly overlaps
+  // the hand; the centre is almost entirely foreground for every offered part.
+  await move(52, 52);
   await expect(install).toHaveText('Install +¥0');
   await expect(page.locator('.placement small')).toHaveText('0 px²');
   await expect(page.getByTestId('score')).toHaveText(startingScore);
-  await move(276, 215);
+  await move(415, 333);
   await expect.poll(amount).toBeGreaterThan(0);
   const partialMoney = await amount(), partialArea = await area();
   await move(276, 333);
@@ -123,7 +124,7 @@ test('mechanical reward depends on newly covered palm pixels, including zero out
   await expect(page.getByTestId('money')).toHaveText('¥0');
 
   // A player can still install an off-palm part, but receives no cash.
-  await move(86, 86);
+  await move(52, 52);
   await expect(install).toHaveText('Install +¥0');
   await expect(install).toBeEnabled();
   await install.click();
@@ -149,6 +150,18 @@ test('missing model reports HTTP 404 and never enables gameplay', async ({ page 
   await expect(page.getByRole('button', { name: 'Buy Injection (¥80)' })).toBeDisabled();
   await page.unroute('**/models/student_fp16.onnx');
   await recognize(page); // Retrying after a transient model error really recovers.
+});
+
+test('missing hand segmentation model never falls back to a fabricated area', async ({ page }) => {
+  await page.route('**/models/magic_touch.tflite', route => route.fulfill({ status: 404, body: 'Missing segmentation model' }));
+  await page.goto('/');
+  await page.getByLabel('Upload Photo', { exact: true }).setInputFiles(fixture);
+  await expect(page.getByRole('alert')).toContainText('Hand segmentation model failed to load');
+  await expect(page.getByTestId('score')).toHaveText('—');
+  await expect(page.locator('.offers button')).toHaveCount(0);
+  await expect(page.getByTestId('money')).toHaveText('¥0');
+  await page.unroute('**/models/magic_touch.tflite');
+  await recognize(page);
 });
 
 test('camera capture uses the real model and resets previous modifications', async ({ page }) => {

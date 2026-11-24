@@ -1,5 +1,6 @@
 * text=auto eol=lf
 *.onnx binary
 *.task binary
+*.tflite binary
 *.png binary
 *.y4m binary
